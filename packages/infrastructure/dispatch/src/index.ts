@@ -1,6 +1,16 @@
 /**
- * الغرض: التصدير الرئيسي لوحدة dispatch
- * الحالة: هيكل فقط — لا تنفيذ. لا تُضِف منطقاً هنا قبل أمر تفعيل صريح.
+ * الغرض: محرك dispatch والمطابقة
+ * الحالة: تنفيد فعلي (جزئي)
  * ينتمي إلى: infrastructure/dispatch
  */
-export {};
+
+export {
+  findAndBroadcastDrivers,
+  createOffersForDrivers,
+  calculateHaversineDistance,
+} from './matching-engine';
+export type {
+  MatchingWeights,
+  MatchedDriver,
+  MatchRequestInput,
+} from './matching-engine';

@@ -4,7 +4,7 @@
  * ينتمي إلى: shared/i18n
  */
 
-import type { Language } from '@wasla/shared/kernel';
+import type { Language } from '@shared/kernel';
 
 export type MessageKey =
   | 'welcome'

@@ -4,7 +4,7 @@
  */
 
 import { describe, expect, test } from 'bun:test';
-import { Ok, Err, isOk, isErr, unwrap, unwrapOr, map, mapErr } from '@wasla/shared/result';
+import { Ok, Err, isOk, isErr, unwrap, unwrapOr, map, mapErr } from '@shared/result';
 
 describe('Result', () => {
   test('Ok creates success result', () => {
