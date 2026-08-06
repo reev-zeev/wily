@@ -1,6 +1,7 @@
 /**
  * الغرض: التصدير الرئيسي لوحدة dispatch
- * الحالة: هيكل فقط — لا تنفيذ. لا تُضِف منطقاً هنا قبل أمر تفعيل صريح.
+ * الحالة: تنفيد فعلي
  * ينتمي إلى: application/dispatch
  */
-export {};
+
+export * from './state-machine/request-state-machine';

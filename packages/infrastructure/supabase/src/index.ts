@@ -4,7 +4,7 @@
  * ينتمي إلى: infrastructure/supabase
  */
 
-export { getSupabaseClient, getSupabaseAnonClient } from './client';
+export { getSupabaseClient, getSupabaseAnonClient, getSupabaseAdmin } from './client';
 export type { SupabaseClient } from './client';
 export { claimRide, recordAttendance, renewSubscription } from './rpc';
 export type {

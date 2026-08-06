@@ -20,4 +20,13 @@ export function getSupabaseAnonClient(): SupabaseClient {
   return createClient(config.supabase.url, config.supabase.anonKey);
 }
 
+export function getSupabaseAdmin(): SupabaseClient {
+  return createClient(config.supabase.url, config.supabase.serviceRoleKey, {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false,
+    },
+  });
+}
+
 export type { SupabaseClient };

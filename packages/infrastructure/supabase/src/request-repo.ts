@@ -12,7 +12,7 @@ export interface Request {
   city_id: string;
   rider_id: string;
   type: 'ride' | 'delivery';
-  status: 'pending' | 'searching' | 'accepted' | 'in_progress' | 'completed' | 'cancelled' | 'escalated';
+  status: 'pending' | 'searching' | 'offer_made' | 'accepted' | 'in_progress' | 'completed' | 'rated' | 'expired' | 'cancelled' | 'escalated';
   pickup_lat: number | null;
   pickup_lng: number | null;
   pickup_address: string | null;
