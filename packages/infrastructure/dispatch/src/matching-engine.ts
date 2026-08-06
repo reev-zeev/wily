@@ -29,12 +29,12 @@ export interface MatchRequestInput {
   pickupLat: number;
   pickupLng: number;
   type: 'ride' | 'delivery';
-  cityId: string;
+  citySlug: string;
 }
 
 /**
  * Finds and broadcasts offers to available drivers.
- * الأول الذين يقبلون wins.
+ * يستخدم الموقع الحي للسائقين (current_lat, current_lng).
  */
 export async function findAndBroadcastDrivers(
   input: MatchRequestInput
@@ -62,44 +62,62 @@ export async function findAndBroadcastDrivers(
 
   const searchRadiusKm = radiusData?.value?.km ?? 10;
 
-  // البحث عن السائقين المتاحين
-  const capability = input.type === 'ride' ? 'rides' : 'delivery';
-  const driversResult = await findAvailableDrivers({
-    city_id: input.cityId,
-    capability,
-    limit: 20,
-  });
+  // البحث عن السائقين المتاحين مع موقعهم الحي
+  // يستخدم RPC الذي يحسب المسافة في القاعدة
+  const { data: drivers, error: driversError } = await supabase.rpc(
+    'get_available_drivers_with_location',
+    {
+      p_city_slug: input.citySlug,
+      p_lat: input.pickupLat,
+      p_lng: input.pickupLng,
+      p_radius_km: searchRadiusKm,
+      p_service_type: input.type,
+      p_limit: 20,
+    }
+  );
 
-  if (!driversResult.ok) {
-    return Err(driversResult.error);
+  if (driversError) {
+    console.error('Error fetching drivers with location:', driversError);
+    return Err(driversError.message);
   }
 
-  const drivers = driversResult.value;
-
-  if (drivers.length === 0) {
+  if (!drivers || drivers.length === 0) {
     return Ok([]);
   }
 
   // ترتيب السائقين بالنقاط
-  // score = (weight_distance * distance_score) + (weight_rating * rating_score)
-  const scoredDrivers: MatchedDriver[] = drivers.map((driver) => {
-    // حساب المسافة (سنستخدم Haversine لاحقاً، الآن قيمة مؤقتة)
-    const distanceKm = calculateHaversineDistance(
-      input.pickupLat,
-      input.pickupLng,
-      21.5433, // lat مؤقت
-      39.1728 // lng مؤقت
-    );
+  const scoredDrivers: MatchedDriver[] = drivers.map((row: any) => {
+    const distanceKm = Number(row.distance_km) || 999;
+    const averageRating = Number(row.average_rating) || 0;
 
     // تطبيع المسافة (أقل مسافة = أعلى نقاط)
     const maxDistance = searchRadiusKm;
     const distanceScore = Math.max(0, 1 - distanceKm / maxDistance);
 
     // تطبيع التقييم (0-5 إلى 0-1)
-    const ratingScore = driver.average_rating / 5;
+    const ratingScore = averageRating / 5;
 
     // حساب النقاط النهائية
     const score = weights.distance * distanceScore + weights.rating * ratingScore;
+
+    // بناء كائن السائق
+    const driver = {
+      id: row.driver_id as string,
+      user_id: row.user_id as string,
+      city_id: '',
+      is_available: true,
+      subscription_status: 'active' as const,
+      subscription_ends_at: null,
+      trial_ends_at: null,
+      capability: row.capability,
+      average_rating: averageRating,
+      total_rides: 0,
+      current_lat: Number(row.current_lat),
+      current_lng: Number(row.current_lng),
+      location_updated_at: null,
+      created_at: '',
+      updated_at: '',
+    };
 
     return {
       driver,

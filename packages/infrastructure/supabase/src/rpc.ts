@@ -2,6 +2,9 @@
  * الغرض: دوال RPC الذرية للعمليات الحرجة
  * الحالة: تنفيد فعلي - تستخدم SELECT ... FOR UPDATE SKIP LOCKED
  * ينتمي إلى: infrastructure/supabase
+ * 
+ * هذه الـ wrappers تستدعي RPC functions في القاعدة
+ * المعرفة في migration 004_fix_cities_and_location.sql
  */
 
 import { getSupabaseClient } from './client';
@@ -13,169 +16,176 @@ export interface ClaimRideInput {
 
 export interface ClaimRideResult {
   success: boolean;
-  offer_id?: string;
+  request_id?: string;
+  driver_id?: string;
   error?: string;
 }
 
 /**
- * يدّعي سائق رحلة. يستخدم SELECT ... FOR UPDATE SKIP LOCKED لضمان الذرية.
- *第一个 سائق يفوز، الباقون يحصلون على خطأ.
+ * يدّعي سائق رحلة عبر RPC ذري.
+ * يستخدم SELECT ... FOR UPDATE SKIP LOCKED لضمان الذرية.
  */
 export async function claimRide(input: ClaimRideInput): Promise<ClaimRideResult> {
   const supabase = getSupabaseClient();
-  
-  // التحقق من أن الطلب لا يزال في حالة البحث
-  const { data: request, error: reqError } = await supabase
-    .from('requests')
-    .select('id, status, type')
-    .eq('id', input.request_id)
-    .single();
 
-  if (reqError || !request) {
-    return { success: false, error: 'REQUEST_NOT_FOUND' };
+  const { data, error } = await supabase.rpc('claim_ride', {
+    p_request_id: input.request_id,
+    p_driver_id: input.driver_id,
+  });
+
+  if (error) {
+    console.error('claim_ride RPC error:', error);
+    return { success: false, error: error.message };
   }
 
-  if (request.status !== 'searching') {
-    return { success: false, error: 'REQUEST_NOT_AVAILABLE' };
-  }
-
-  // محاولة إنشاء العرض (أول واحد ينجح هو الفائز)
-  const expiresAt = new Date(Date.now() + 45000).toISOString(); // 45 ثانية
-
-  const { data: offer, error: offerError } = await supabase
-    .from('offers')
-    .insert({
-      request_id: input.request_id,
-      driver_id: input.driver_id,
-      status: 'accepted',
-      expires_at: expiresAt,
-    })
-    .select('id')
-    .single();
-
-  if (offerError) {
-    //，很可能已经有其他司机接受了
-    return { success: false, error: 'ALREADY_CLAIMED' };
-  }
-
-  // تحديث حالة الطلب إلى مقبول
-  await supabase
-    .from('requests')
-    .update({ 
-      status: 'accepted',
-      updated_at: new Date().toISOString()
-    })
-    .eq('id', input.request_id)
-    .eq('status', 'searching'); // 确保只更新还在搜索状态的
-
-  // إلغاء العروض الأخرى المعلقة
-  await supabase
-    .from('offers')
-    .update({ status: 'cancelled' })
-    .eq('request_id', input.request_id)
-    .neq('id', offer.id)
-    .eq('status', 'pending');
-
-  return { success: true, offer_id: offer.id };
+  return data as ClaimRideResult;
 }
 
 export interface RecordAttendanceInput {
   driver_id: string;
   is_available: boolean;
+  lat?: number;
+  lng?: number;
 }
 
 export interface RecordAttendanceResult {
   success: boolean;
+  driver_id?: string;
+  is_available?: boolean;
   error?: string;
+  subscription_status?: string;
 }
 
 /**
- * يسجّل توفر السائق (متاح/غير متاح).
+ * يسجّل توفر السائق (متاح/غير متاح) مع الموقع الحي.
  */
 export async function recordAttendance(
   input: RecordAttendanceInput
 ): Promise<RecordAttendanceResult> {
   const supabase = getSupabaseClient();
 
-  const { error } = await supabase
-    .from('drivers')
-    .update({
-      is_available: input.is_available,
-      updated_at: new Date().toISOString(),
-    })
-    .eq('id', input.driver_id);
+  const { data, error } = await supabase.rpc('record_attendance', {
+    p_driver_id: input.driver_id,
+    p_is_available: input.is_available,
+    p_lat: input.lat ?? null,
+    p_lng: input.lng ?? null,
+  });
 
   if (error) {
+    console.error('record_attendance RPC error:', error);
     return { success: false, error: error.message };
   }
 
-  // تسجيل في التدقيق
-  await supabase.from('audit_logs').insert({
-    user_id: input.driver_id,
-    action: input.is_available ? 'DRIVER_AVAILABLE' : 'DRIVER_UNAVAILABLE',
-    entity_type: 'drivers',
-    entity_id: input.driver_id,
-    metadata: { is_available: input.is_available },
-  });
-
-  return { success: true };
+  return data as RecordAttendanceResult;
 }
 
 export interface RenewSubscriptionInput {
   driver_id: string;
   plan: 'rides' | 'delivery' | 'both';
+  months?: number;
 }
 
 export interface RenewSubscriptionResult {
   success: boolean;
+  driver_id?: string;
+  plan?: string;
+  price?: number;
+  expires_at?: string;
   error?: string;
 }
 
 /**
- * يجدّد اشتراك السائق بناءً على الخطة المختارة.
- * الأسعار تُقرأ من platform_settings.
+ * يجدّد اشتراك السائق عبر RPC ذري.
  */
 export async function renewSubscription(
   input: RenewSubscriptionInput
 ): Promise<RenewSubscriptionResult> {
   const supabase = getSupabaseClient();
 
-  // جلب السعر من platform_settings
-  const priceKey = input.plan === 'both' ? 'dual_service_price' : 'single_service_price';
-  const { data: priceData } = await supabase
-    .from('platform_settings')
-    .select('value')
-    .eq('key', priceKey)
-    .single();
-
-  const price = priceData?.value?.amount ?? 250;
-
-  // حساب تاريخ انتهاء الاشتراك (شهر واحد)
-  const endsAt = new Date();
-  endsAt.setMonth(endsAt.getMonth() + 1);
-
-  const { error } = await supabase
-    .from('drivers')
-    .update({
-      subscription_status: 'active',
-      subscription_ends_at: endsAt.toISOString(),
-      capability: input.plan,
-      updated_at: new Date().toISOString(),
-    })
-    .eq('id', input.driver_id);
+  const { data, error } = await supabase.rpc('renew_subscription', {
+    p_driver_id: input.driver_id,
+    p_plan: input.plan,
+    p_months: input.months ?? 1,
+  });
 
   if (error) {
+    console.error('renew_subscription RPC error:', error);
     return { success: false, error: error.message };
   }
 
-  // تسجيل في التدقيق
-  await supabase.from('audit_logs').insert({
-    user_id: input.driver_id,
-    action: 'SUBSCRIPTION_RENEWED',
-    entity_type: 'drivers',
-    entity_id: input.driver_id,
-    metadata: { plan: input.plan, price },
+  return data as RenewSubscriptionResult;
+}
+
+export interface ClaimUnsubscribedSlotInput {
+  request_id: string;
+  driver_id: string;
+  driver_telegram_id: number;
+  timeout_seconds?: number;
+}
+
+export interface ClaimUnsubscribedSlotResult {
+  success: boolean;
+  slot_number?: number;
+  max_slots?: number;
+  expires_at?: string;
+  is_first?: boolean;
+  error?: string;
+}
+
+/**
+ * يحجز slot في آلية الثلاثة للتسلسل.
+ */
+export async function claimUnsubscribedSlot(
+  input: ClaimUnsubscribedSlotInput
+): Promise<ClaimUnsubscribedSlotResult> {
+  const supabase = getSupabaseClient();
+
+  const { data, error } = await supabase.rpc('claim_unsubscribed_slot', {
+    p_request_id: input.request_id,
+    p_driver_id: input.driver_id,
+    p_driver_telegram_id: input.driver_telegram_id,
+    p_timeout_seconds: input.timeout_seconds ?? 120,
   });
 
-  return { success: true };
+  if (error) {
+    console.error('claim_unsubscribed_slot RPC error:', error);
+    return { success: false, error: error.message };
+  }
+
+  return data as ClaimUnsubscribedSlotResult;
+}
+
+export interface UpdateDriverLocationInput {
+  driver_id: string;
+  lat: number;
+  lng: number;
+}
+
+export interface UpdateDriverLocationResult {
+  success: boolean;
+  lat?: number;
+  lng?: number;
+  error?: string;
+}
+
+/**
+ * يحدث موقع السائق الحي من Telegram.
+ */
+export async function updateDriverLocation(
+  input: UpdateDriverLocationInput
+): Promise<UpdateDriverLocationResult> {
+  const supabase = getSupabaseClient();
+
+  const { data, error } = await supabase.rpc('update_driver_location', {
+    p_driver_id: input.driver_id,
+    p_lat: input.lat,
+    p_lng: input.lng,
+  });
+
+  if (error) {
+    console.error('update_driver_location RPC error:', error);
+    return { success: false, error: error.message };
+  }
+
+  return data as UpdateDriverLocationResult;
 }

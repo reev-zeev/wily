@@ -165,7 +165,7 @@ export async function handleDropoffLocation(ctx: MyContext): Promise<void> {
     pickupLat: state.pickupLat,
     pickupLng: state.pickupLng,
     type: state.type,
-    cityId: state.rider.city_id,
+    citySlug: 'jeddah', // TODO: Get from rider's city
   });
 
   if (!matchResult.ok) {

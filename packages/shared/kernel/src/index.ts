@@ -6,7 +6,6 @@
 
 // معرفات UUID
 export type UUID = string;
-
 export type EntityId = UUID;
 
 // الطوابع الزمنية
@@ -18,17 +17,24 @@ export interface Timestamped {
 // Roles
 export type UserRole = 'driver' | 'rider' | 'admin';
 
-// City IDs (Saudi Arabia)
-export type CityId = 'jeddah' | 'makkah' | 'riyadh' | 'taif';
+// City Slugs (نص وصفي للمدن الأربع)
+export type CitySlug = 'jeddah' | 'makkah' | 'riyadh' | 'taif';
+
+// City IDs (UUID من القاعدة)
+export type CityId = string;
 
 export interface City {
-  id: CityId;
+  id: UUID;
+  slug: CitySlug;
   name_ar: string;
   name_en: string;
+  region: string;
   is_active: boolean;
   telegram_support_group_id: string | null;
   telegram_escalation_group_id: string | null;
   telegram_unsubscribed_drivers_group_id: string | null;
+  created_at: string;
+  updated_at: string;
 }
 
 // أنواع الخدمة
@@ -41,9 +47,12 @@ export type SubscriptionStatus = 'none' | 'trial' | 'active' | 'expired';
 export type RequestStatus =
   | 'pending'
   | 'searching'
+  | 'offer_made'
   | 'accepted'
   | 'in_progress'
   | 'completed'
+  | 'rated'
+  | 'expired'
   | 'cancelled'
   | 'escalated';
 
@@ -57,6 +66,13 @@ export type Language = 'ar' | 'en' | 'ur';
 export interface Coordinates {
   lat: number;
   lng: number;
+}
+
+// موقع السائق الحي
+export interface DriverLocation {
+  lat: number;
+  lng: number;
+  updated_at: Date;
 }
 
 // Base Entity
@@ -73,3 +89,6 @@ export interface DomainEvent<T = unknown> {
   payload: T;
   occurred_at: Date;
 }
+
+// City Slug to ID mapping (يُقرأ من القاعدة، هذه قيم افتراضية)
+export const CITY_SLUGS: CitySlug[] = ['jeddah', 'makkah', 'riyadh', 'taif'];

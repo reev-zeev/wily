@@ -18,6 +18,9 @@ export interface Driver {
   capability: 'rides' | 'delivery' | 'both' | null;
   average_rating: number;
   total_rides: number;
+  current_lat: number | null;
+  current_lng: number | null;
+  location_updated_at: string | null;
   created_at: string;
   updated_at: string;
 }

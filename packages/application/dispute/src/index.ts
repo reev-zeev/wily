@@ -1,6 +1,8 @@
 /**
- * الغرض: التصدير الرئيسي لوحدة dispute
- * الحالة: هيكل فقط — لا تنفيذ. لا تُضِف منطقاً هنا قبل أمر تفعيل صريح.
- * ينتمي إلى: application/dispute
+ * الغرض: تصدير dispute module
+ * الحالة: تنفيد فعلي
+ * ينتمي إلى: packages/application/dispute
  */
-export {};
+
+export * from './support-group';
+export * from './escalation-group';

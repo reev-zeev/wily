@@ -5,29 +5,43 @@
  */
 
 import { Bot, type Context } from 'grammy';
-import { config } from '@shared/config';
+import { Result, Ok, Err } from '@shared/result';
 
 export type TelegramBot = Bot<Context>;
 
 let _driverBot: TelegramBot | null = null;
 let _riderBot: TelegramBot | null = null;
 
+function getBotToken(botType: 'driver' | 'rider'): string {
+  return botType === 'driver'
+    ? process.env.TELEGRAM_DRIVER_BOT_TOKEN ?? ''
+    : process.env.TELEGRAM_RIDER_BOT_TOKEN ?? '';
+}
+
 export function getDriverBot(): TelegramBot {
   if (!_driverBot) {
-    _driverBot = new Bot(config.telegram.driverBotToken);
+    const token = getBotToken('driver');
+    if (!token) {
+      throw new Error('TELEGRAM_DRIVER_BOT_TOKEN not configured');
+    }
+    _driverBot = new Bot(token);
   }
   return _driverBot;
 }
 
 export function getRiderBot(): TelegramBot {
   if (!_riderBot) {
-    _riderBot = new Bot(config.telegram.riderBotToken);
+    const token = getBotToken('rider');
+    if (!token) {
+      throw new Error('TELEGRAM_RIDER_BOT_TOKEN not configured');
+    }
+    _riderBot = new Bot(token);
   }
   return _riderBot;
 }
 
 export interface SendMessageInput {
-  chatId: number;
+  chatId: number | string;
   text: string;
   replyMarkup?: unknown;
 }
@@ -35,19 +49,28 @@ export interface SendMessageInput {
 export async function sendMessage(
   bot: TelegramBot,
   input: SendMessageInput
-): Promise<void> {
-  await bot.api.sendMessage(input.chatId, input.text, {
-    reply_markup: input.replyMarkup as any,
-  });
+): Promise<Result<void, string>> {
+  try {
+    await bot.api.sendMessage(
+      typeof input.chatId === 'string' ? parseInt(input.chatId) : input.chatId,
+      input.text,
+      {
+        reply_markup: input.replyMarkup as any,
+      }
+    );
+    return Ok(undefined);
+  } catch (error) {
+    return Err(error instanceof Error ? error.message : 'Failed to send message');
+  }
 }
 
 export async function sendMessageToDriver(
   driverTelegramId: number,
   text: string,
   replyMarkup?: unknown
-): Promise<void> {
+): Promise<Result<void, string>> {
   const bot = getDriverBot();
-  await sendMessage(bot, {
+  return sendMessage(bot, {
     chatId: driverTelegramId,
     text,
     replyMarkup,
@@ -58,9 +81,9 @@ export async function sendMessageToRider(
   riderTelegramId: number,
   text: string,
   replyMarkup?: unknown
-): Promise<void> {
+): Promise<Result<void, string>> {
   const bot = getRiderBot();
-  await sendMessage(bot, {
+  return sendMessage(bot, {
     chatId: riderTelegramId,
     text,
     replyMarkup,
@@ -73,9 +96,9 @@ export interface SendToGroupInput {
   replyMarkup?: unknown;
 }
 
-export async function sendToGroup(input: SendToGroupInput): Promise<void> {
-  const bot = getDriverBot(); // أو rider bot حسب المجموعة
-  await sendMessage(bot, {
+export async function sendToGroup(input: SendToGroupInput): Promise<Result<void, string>> {
+  const bot = getDriverBot();
+  return sendMessage(bot, {
     chatId: parseInt(input.groupId),
     text: input.text,
     replyMarkup: input.replyMarkup,
