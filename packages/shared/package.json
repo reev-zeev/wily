@@ -1,0 +1,11 @@
+{
+  "name": "@wasla/shared",
+  "version": "0.0.1",
+  "type": "module",
+  "exports": {
+    "./kernel": "./kernel/src/index.ts",
+    "./result": "./result/src/index.ts",
+    "./config": "./config/src/index.ts",
+    "./i18n": "./i18n/src/index.ts"
+  }
+}

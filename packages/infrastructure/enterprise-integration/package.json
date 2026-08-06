@@ -1,0 +1,6 @@
+{
+  "name": "@wasla/infrastructure/enterprise-integration",
+  "version": "0.0.1",
+  "type": "module",
+  "main": "src/index.ts"
+}

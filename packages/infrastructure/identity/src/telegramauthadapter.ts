@@ -1,0 +1,7 @@
+/**
+ * الغرض: محول TelegramAuthAdapter
+ * الحالة: هيكل فقط — لا تنفيذ. لا تُضِف منطقاً هنا قبل أمر تفعيل صريح.
+ * ينتمي إلى: infrastructure/identity
+ * يُتوقع أن يستخدمه: application/identity
+ */
+export {};

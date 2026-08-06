@@ -1,0 +1,11 @@
+{
+  "name": "wasla-admin-dashboard",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "main": "src/index.tsx",
+  "scripts": {
+    "start": "bun run src/index.tsx",
+    "dev": "bun --watch src/index.tsx"
+  }
+}
