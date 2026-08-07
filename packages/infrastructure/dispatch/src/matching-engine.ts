@@ -164,6 +164,7 @@ function toRad(deg: number): number {
  */
 export async function createOffersForDrivers(
   requestId: string,
+  cityId: string,
   drivers: MatchedDriver[]
 ): Promise<Result<number, string>> {
   const supabase = getSupabaseClient();
@@ -180,6 +181,7 @@ export async function createOffersForDrivers(
 
   const offers = drivers.map((d) => ({
     request_id: requestId,
+    city_id: cityId,
     driver_id: d.driver.id,
     status: 'pending',
     expires_at: expiresAt,

@@ -21,6 +21,7 @@ import type { CityId } from '@shared/kernel';
 export interface Rating {
   id: string;
   request_id: string;
+  city_id: string;
   rater_type: 'driver' | 'rider';
   rater_id: string;
   rated_type: 'driver' | 'rider';
@@ -32,6 +33,7 @@ export interface Rating {
 
 export interface RatingInput {
   request_id: string;
+  city_id: string;
   rater_type: 'driver' | 'rider';
   rater_id: string;
   rated_id: string;
@@ -95,7 +97,7 @@ export async function submitRating(input: RatingInput): Promise<Result<Rating, s
   // Verify request exists and is completed
   const { data: request, error: requestError } = await supabase
     .from('requests')
-    .select('status, driver_id, rider_id')
+    .select('status, driver_id, rider_id, city_id')
     .eq('id', input.request_id)
     .single();
 
@@ -132,6 +134,7 @@ export async function submitRating(input: RatingInput): Promise<Result<Rating, s
     .from('ratings')
     .insert({
       request_id: input.request_id,
+      city_id: input.city_id,
       rater_type: input.rater_type,
       rater_id: input.rater_id,
       rated_type: input.rater_type === 'driver' ? 'rider' : 'driver',
