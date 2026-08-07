@@ -249,6 +249,7 @@ describe.skipIf(SKIP_INTEGRATION)('E2E Flow: Request → Matching → Accept →
     // Submit rider rating for driver
     const { error: ratingError } = await supabase.from('ratings').insert({
       request_id: testRequestId,
+      city_id: testCityId,
       rater_type: 'rider',
       rater_id: testRiderId,
       rated_type: 'driver',

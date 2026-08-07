@@ -147,3 +147,33 @@ export function isDriverActive(driver: Driver): boolean {
   
   return false;
 }
+
+// ══════════════════════════════════════════════════════════════════
+// SUBSCRIPTION PRICES (from platform_settings)
+// ══════════════════════════════════════════════════════════════════
+
+export interface SubscriptionPrices {
+  single: number;  // rides_only or delivery_only
+  dual: number;    // both
+}
+
+export async function getSubscriptionPrices(): Promise<Result<SubscriptionPrices, string>> {
+  const supabase = getSupabaseClient();
+
+  const { data, error } = await supabase
+    .from('platform_settings')
+    .select('key, value')
+    .in('key', ['subscription_price_single', 'subscription_price_dual']);
+
+  if (error) {
+    return Err(error.message);
+  }
+
+  const single = data?.find((s) => s.key === 'subscription_price_single')?.value?.amount ?? 250;
+  const dual = data?.find((s) => s.key === 'subscription_price_dual')?.value?.amount ?? 400;
+
+  return Ok({
+    single: Number(single),
+    dual: Number(dual),
+  });
+}

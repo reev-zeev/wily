@@ -44,8 +44,9 @@ export {
   getDriverById,
   findAvailableDrivers,
   isDriverActive,
+  getSubscriptionPrices,
 } from './driver-repo';
-export type { Driver, CreateDriverInput } from './driver-repo';
+export type { Driver, CreateDriverInput, SubscriptionPrices } from './driver-repo';
 
 // Rider repository
 export {

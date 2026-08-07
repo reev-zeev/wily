@@ -6,6 +6,7 @@
 
 import { Bot, type Context } from 'grammy';
 import { getDriverBot } from '@infrastructure/notification';
+import { getSubscriptionPrices } from '@infrastructure/supabase';
 import {
   handleRegister,
   handleCitySelection,
@@ -43,11 +44,15 @@ export function setupDriverBot(): Bot<MyContext> {
 
   // Command: /help
   bot.command('help', async (ctx) => {
+    // جلب الأسعار من platform_settings
+    const pricesResult = await getSubscriptionPrices();
+    const prices = pricesResult.ok ? pricesResult.value : { single: 250, dual: 400 };
+
     await ctx.reply(
       '📖 دليل السائق:\n\n' +
         '━━━━━━━━━━━━━━━\n' +
         '/register - التسجيل كمستخدم جديد\n' +
-        '/subscribe - الاشتراك (250/400 شهرياً)\n' +
+        `/subscribe - الاشتراك (${prices.single}/${prices.dual} شهرياً)\n` +
         '/available - أنت الآن متاح\n' +
         '/unavailable - أنت غير متاح\n' +
         '/offers - عرض العروض المعلقة\n' +
@@ -64,17 +69,21 @@ export function setupDriverBot(): Bot<MyContext> {
 
   // Command: /subscribe
   bot.command('subscribe', async (ctx) => {
+    // جلب الأسعار من platform_settings
+    const pricesResult = await getSubscriptionPrices();
+    const prices = pricesResult.ok ? pricesResult.value : { single: 250, dual: 400 };
+
     await ctx.reply('💳 اختر نوع الاشتراك:', {
       reply_markup: {
         inline_keyboard: [
           [
-            { text: '🚗 مشاوير فقط (250 ر.س)', callback_data: 'subscribe:rides' },
+            { text: `🚗 مشاوير فقط (${prices.single} ر.س)`, callback_data: 'subscribe:rides' },
           ],
           [
-            { text: '📦 توصيل فقط (250 ر.س)', callback_data: 'subscribe:delivery' },
+            { text: `📦 توصيل فقط (${prices.single} ر.س)`, callback_data: 'subscribe:delivery' },
           ],
           [
-            { text: '🚗📦 كلاهما (400 ر.س)', callback_data: 'subscribe:both' },
+            { text: `🚗📦 كلاهما (${prices.dual} ر.س)`, callback_data: 'subscribe:both' },
           ],
         ],
       },

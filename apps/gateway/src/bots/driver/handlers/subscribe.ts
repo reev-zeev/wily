@@ -8,7 +8,7 @@ import type { MyContext } from '../bot';
 import {
   getUserByTelegramId,
   renewSubscription,
-  getSupabaseClient,
+  getSubscriptionPrices,
 } from '@infrastructure/supabase';
 
 export async function handleSubscribe(
@@ -30,6 +30,11 @@ export async function handleSubscribe(
 
   const user = userResult.value;
 
+  // جلب الأسعار من platform_settings
+  const pricesResult = await getSubscriptionPrices();
+  const prices = pricesResult.ok ? pricesResult.value : { single: 250, dual: 400 };
+  const amount = plan === 'both' ? prices.dual : prices.single;
+
   // تجديد الاشتراك
   const result = await renewSubscription({
     driver_id: user.id,
@@ -50,7 +55,7 @@ export async function handleSubscribe(
   await ctx.reply(
     `✅ تم الاشتراك بنجاح!\n\n` +
       `📋 الخطة: ${planNames[plan]}\n` +
-      `💰 المبلغ: ${plan === 'both' ? '400' : '250'} ريال/شهر\n` +
+      `💰 المبلغ: ${amount} ريال/شهر\n` +
       `📅 صالح حتى: نهاية الشهر\n\n` +
       `🆓 ملاحظة: فترة التجربة المجانية لا تزال سارية`
   );

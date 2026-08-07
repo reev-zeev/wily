@@ -12,6 +12,7 @@ import {
   createUser,
   getAllCities,
   createDriver,
+  getSubscriptionPrices,
   type City,
 } from '@infrastructure/supabase';
 
@@ -88,6 +89,10 @@ export async function handleCitySelection(
     return;
   }
 
+  // جلب الأسعار من platform_settings
+  const pricesResult = await getSubscriptionPrices();
+  const prices = pricesResult.ok ? pricesResult.value : { single: 250, dual: 400 };
+
   const keyboard = new InlineKeyboard()
     .text('🚗 مشاوير فقط', 'subscribe:rides')
     .row()
@@ -98,9 +103,9 @@ export async function handleCitySelection(
   await ctx.reply(
     '✅ تم التسجيل بنجاح!\n\n' +
       '📋 اختر نوع الاشتراك:\n\n' +
-      '1️⃣ مشاوير فقط - 250 ريال/شهر\n' +
-      '2️⃣ توصيل فقط - 250 ريال/شهر\n' +
-      '3️⃣ كلاهما - 400 ريال/شهر\n\n' +
+      `1️⃣ مشاوير فقط - ${prices.single} ريال/شهر\n` +
+      `2️⃣ توصيل فقط - ${prices.single} ريال/شهر\n` +
+      `3️⃣ كلاهما - ${prices.dual} ريال/شهر\n\n` +
       '🆓 لديك 30 يوم تجربة مجانية!',
     { reply_markup: keyboard }
   );
